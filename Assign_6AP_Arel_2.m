@@ -4,10 +4,6 @@
 clc
 clear;
 
-Utnot = f;      % u(x,t=0) = f(x) is given
-Uxnot = g0;     % Dirichlet BC (u(x=0,t)=g0)
-UxL = gL;       % Dirichlet BC (u(x=L,t)=gL)
-
 %Problem 1
 Nx = 10;        % N+1 node is at L, boundary
                 % 1st node is on boundary at 0
@@ -20,7 +16,10 @@ F = 0;          % F is given to be 0
 D = 0.1;        % D is given to be 0.1
 g0 = 0;         % g0 is given as 0
 gL=0;           % gL is given as 0
-f = sin(k*x)    % f is given
+%f = sin(k*x);  % f is given
+%Utnot = f;     % u(x,t=0) = f(x) is given and is defined below
+Uxnot = g0;     % Dirichlet BC (u(x=0,t)=g0)
+UxL = gL;       % Dirichlet BC (u(x=L,t)=gL)
 
 era = 0.00001;% Used to compare itteration results
 fprintf('The solution to the 1D using Crank-Nicolson:\n\n');
@@ -35,29 +34,34 @@ for m = 1:2
     max_er = 2*era;         % Initial error for while loop itteration stop condition
     it = 0;                 % iterations
     hx = Lx/Nx;             % Step size in x
-    hy = Ly/Nt;             % Step size in y
+    ht = Lt/Nt;             % Step size in y
    %Create constants for equations to reduce the # of operations in loop
-   %S_1 = -2*k;             % 
+   S_1 = -2*k;             % 
    S_2x = hx*k;             % f(x) is sin(k*x) so constant is k*x
-   %S_2y = hy*k;             % Constant in y
+   S_2y = ht*k;             % Constant in y
    %S_3x = hx*hx;            % multiply by .25 instead of divide by 4 (to better optomize) in x
    %S_3y = hy*hy;            % Same as above but in y  
    %S_4 = -2*S_3x-2*S_3y;    %Constant for if delta x and delta y are not the same
    %S_5=S_3x*S_3y;           %constant for f
     U = zeros(Nx+1,Nt+1);	% Create solution matix with initial guess of ZERO
-    F = zeros(Nx+1,Nt+1);	% Create non homogeneous RHS vector
+    RHS = zeros(Nx+1,Nt+1);	% Create non homogeneous RHS vector
                             % Apply Dirichlet boundary conditions to solution matrix
     U(:,1) = Uxnot;         % LHS Boundary at x = 0 (LHS = left hand side)
   U(:,Nx+1) = UxL;          % RHS Boundary at x = L (RHS = right hand side)
-  U(1,2:Nt) = Utnot;        % Bounday at t =0
-
+    c=0;
+  for j=2:Nt+1                % Bounday at t =0, given in problem
+      c=c+hx;
+      U(1,j) = sin(S_2x*c);    
+  end  
+end
+%{
 for i = 2:Nx             % Create RHS vector for all interior U, i,j = 1,N+1 on boundary		
         for j = 2:Nt 
-       	F(i,j) = S_1*sin(S_2x*(j-1))*cosh(S_2y*(i-1));
+       	RHS(i,j) = S_1*sin(S_2x*(j-1))*cosh(S_2y*(i-1));
         end
 end
 
-F = (S_5).*F;      %For Nx and Ny different than each other
+RHS = (S_5).*RHS;      %For Nx and Ny different than each other
 
 %Do twice to compare N and 2N
 
@@ -68,7 +72,7 @@ Uprev = U;                  % Must rewrite previous matrix so that can compare t
 
 for i = 2:Nx                % Gauss - Seidel itteration 
     for j = 2:Nt
-		U(i,j) = (F(i,j)- S_3y.*U(i+1,j) -S_3y.* U(i-1,j) - S_3x.*U(i,j+1) - S_3x.*U(i,j-1) )/S_4;
+		U(i,j) = (RHS(i,j)- S_3y.*U(i+1,j) -S_3y.* U(i-1,j) - S_3x.*U(i,j+1) - S_3x.*U(i,j-1) )/S_4;
 		it_er(i,j) = abs( (U(i,j) - Uprev(i,j)));
     end
 end
@@ -77,7 +81,7 @@ end
 
 for i=1:Nx+1
     for j = 2:Nt+1
-    Uexact(i,j) = (Ly-(i-1)*hy)*sin(S_2x*(j-1))*sinh(S_2y*(i-1));
+    Uexact(i,j) = (Ly-(i-1)*ht)*sin(S_2x*(j-1))*sinh(S_2y*(i-1));
     end
 end
 
@@ -109,3 +113,4 @@ figure(2);
 y = linspace(0,pi,Nt+1);
 plot(U2N(Nt/4+1,:),y,'g*',U2Ne(Nt/4+1,:),y,'g',U2N(Nt/2+1,:),y,'bo',U2Ne(Nt/2+1,:),y,'b',U2N(3*Nt/4+1,:),y,'rx',U2Ne(3*Nt/4+1,:),y,'r');
 legend('U(\pi/4,y) approximate','U(\pi/4,y) exact','U(\pi/2,y) approximate','U(\pi/2,y) exact','U(3\pi/4,y) approximate','U(3\pi/4,y) exact');
+%}
